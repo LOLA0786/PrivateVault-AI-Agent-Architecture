@@ -1,3 +1,8 @@
+import json
+import hashlib
+from app.policy.policy_matrix import resolve_action
+from app.observability.metrics import REQUEST_TOTAL, BLOCK_TOTAL, REQUEST_LATENCY
+import time
 import os
 import hashlib
 import yaml
@@ -36,61 +41,43 @@ def call_grok(model, prompt, temperature):
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
 
+
 def execute_ai(request):
-    db = SessionLocal()
+    prompt = f"""
+Classify the following text and return JSON only:
 
-    prompt_config = load_prompt("classifier_v1")
+{{"sensitivity": "LOW|HIGH", "contains_pii": true|false, "risk_score": 0-1}}
 
-    full_prompt = f"""
-{prompt_config["instruction"]}
-
-Respond ONLY with valid JSON.
-No explanation.
-No markdown.
-
-TEXT:
+Text:
 {request.input_text}
 """
 
-    raw_output = call_grok(
-        model="grok-4-latest",
-        prompt=full_prompt,
-        temperature=prompt_config["temperature"]
-    )
+    raw_output = call_grok("grok-4-latest", prompt, 0.2)
 
     try:
-        parsed = ClassificationResult.model_validate(json.loads(raw_output))
-    except (json.JSONDecodeError, ValidationError) as e:
-        db.close()
-        return {"error": "Invalid AI response format", "details": str(e), "raw": raw_output}
+        classification = json.loads(raw_output)
+    except Exception:
+        raise Exception("Invalid AI response format")
 
-    output_hash = hash_text(raw_output)
+    governance = {
+        "policy": {
+            "action": "BLOCK" if classification["sensitivity"] == "HIGH" else "ALLOW",
+            "reason": "High sensitivity data detected"
+            if classification["sensitivity"] == "HIGH"
+            else "No policy violations"
+        },
+        "risk": {
+            "risk_level": classification["sensitivity"]
+        }
+    }
 
-    # HASH CHAINING
-    last_entry = db.query(AuditLog).order_by(AuditLog.id.desc()).first()
-    previous_hash = last_entry.current_hash if last_entry else "GENESIS"
-    current_hash = hash_text(previous_hash + output_hash)
-
-    log = AuditLog(
-        tenant_id=request.tenant_id,
-        user_id=request.user_id,
-        prompt_id=prompt_config["id"],
-        output_hash=output_hash,
-        previous_hash=previous_hash,
-        current_hash=current_hash
-    )
-
-    db.add(log)
-    db.commit()
-
-    # MULTI-AGENT FLOW
-    flow_result = governance_flow(parsed.model_dump())
-
-    db.close()
+    ledger_hash = hashlib.sha256(
+        json.dumps(classification).encode()
+    ).hexdigest()
 
     return {
         "tenant_id": request.tenant_id,
-        "classification": parsed.model_dump(),
-        "governance": flow_result,
-        "ledger_hash": current_hash
+        "classification": classification,
+        "governance": governance,
+        "ledger_hash": ledger_hash
     }

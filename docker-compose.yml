@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  ai-service:
+    build: ./PrivateVault-AI-Agent-Architecture
+    container_name: ai_service
+    ports:
+      - "8000:8000"
+    environment:
+      - GROK_API_KEY=${GROK_API_KEY}
+    restart: always
+
+  mega-api:
+    build: ./PrivateVault-Mega-Repo
+    container_name: mega_api
+    ports:
+      - "8001:8000"
+    environment:
+      - AI_SERVICE_URL=http://ai_service:8000
+    depends_on:
+      - ai-service
+    restart: always
