@@ -1,0 +1,12 @@
+id: classifier_v1
+version: 1
+model: gpt-4.1
+temperature: 0.3
+instruction: |
+  Classify the sensitivity of this text.
+  Return strict JSON:
+  {
+    "sensitivity": "HIGH|MEDIUM|LOW",
+    "contains_pii": true/false,
+    "risk_score": 0-1
+  }
