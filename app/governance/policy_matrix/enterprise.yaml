@@ -1,0 +1,13 @@
+rules:
+  - condition:
+      sensitivity: HIGH
+      contains_pii: true
+    action: BLOCK
+
+  - condition:
+      sensitivity: HIGH
+    action: ESCALATE
+
+  - condition:
+      sensitivity: LOW
+    action: ALLOW

@@ -1,20 +1,26 @@
-from app.observability.metrics import router as metrics_router
-from app.observability.health import router as health_router
-from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
+from app.system.health import router as health_router
 from fastapi import FastAPI
 from app.router import router
-from app.models.database import engine
-from app.models.schemas import Base
+from app.middleware.logging import logging_middleware
+from app.middleware.rate_limit import rate_limit_middleware
+from app.metrics.prometheus import metrics_endpoint
 
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="PrivateVault AI Agent Engine")
-app.include_router(metrics_router)
+app = FastAPI(title="PrivateVault AI Governance Engine")
 app.include_router(health_router)
+
+app.middleware("http")(logging_middleware)
+app.middleware("http")(rate_limit_middleware)
 
 app.include_router(router)
 
-@app.get("/")
-def health():
-    return {"status": "ok"}
+@app.get("/metrics")
+def metrics():
+    return metrics_endpoint()
+
+@app.get("/health/live")
+def live():
+    return {"status": "alive"}
+
+@app.get("/health/ready")
+def ready():
+    return {"status": "ready"}
