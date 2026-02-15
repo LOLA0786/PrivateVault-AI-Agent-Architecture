@@ -4,3 +4,17 @@ __pycache__/
 audit.db
 .env
 *.log
+
+# Runtime artifacts
+*.jsonl
+cost_baseline.json
+model_fingerprint_registry.json
+privatevault_audit.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+venv/
+.env
