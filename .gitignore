@@ -18,3 +18,17 @@ __pycache__/
 # Environment
 venv/
 .env
+
+# backups
+*.bak
+
+# python env
+venv/
+
+# logs
+*.log
+audit.log
+
+# datasets (optional)
+data/*.csv
+
