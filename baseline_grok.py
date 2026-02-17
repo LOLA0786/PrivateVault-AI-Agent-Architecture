@@ -1,31 +1,17 @@
-import pandas as pd
 import asyncio
 from app.providers.grok_provider import call_grok
 
-DATA_PATH = "data/creditcard.csv"
-
 async def analyze():
+    prompt = input("Enter prompt: ")
 
-    df = pd.read_csv(DATA_PATH).sample(200)
-
-    correct = 0
-
-    for _, row in df.iterrows():
-
-        prompt = f"""
-Transaction amount: {row['Amount']}
-Should this be flagged as fraud? Answer YES or NO.
-"""
-
+    try:
         result = await call_grok(prompt)
+    except Exception as e:
+        print("Error:", e)
+        return
 
-        answer = result["response"]
+    print("\n=== BASELINE RESPONSE ===\n")
+    print(result)
 
-        predicted = 1 if "yes" in answer else 0
-
-        if predicted == row["Class"]:
-            correct += 1
-
-    print("Baseline accuracy:", correct / len(df))
-
-asyncio.run(analyze())
+if __name__ == "__main__":
+    asyncio.run(analyze())

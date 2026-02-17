@@ -1,62 +1,44 @@
 import os
-import httpx
+import requests
+import asyncio
 
-GROK_ENDPOINT = "https://api.x.ai/v1/chat/completions"
+URL = "https://api.x.ai/v1/chat/completions"
 
 async def call_grok(messages):
+    """
+    Accepts either:
+    - string prompt
+    - list of {role, content}
+    """
+
     api_key = os.getenv("XAI_API_KEY")
-
     if not api_key:
-        return {
-            "mode": "mock",
-            "model": "grok",
-            "response": "mock response",
-            "fingerprint": "mock"
-        }
+        raise RuntimeError("XAI_API_KEY not set")
 
-    # convert plain text messages to structured format
-    formatted_messages = []
-    for m in messages:
-        formatted_messages.append({
-            "role": m["role"],
-            "content": [
-                {"type": "text", "text": m["content"]}
-            ]
-        })
+    # ✅ normalize input
+    if isinstance(messages, str):
+        messages = [{"role": "user", "content": messages}]
 
     payload = {
-        "model": "grok-4-0709",
-        "messages": messages
+        "model": "grok-4",
+        "messages": messages,
+        "temperature": 0
     }
 
-    timeout = httpx.Timeout(60.0, connect=20.0)
-    async with httpx.AsyncClient(http2=False, timeout=timeout) as client:
-        for attempt in range(3):
-            try:
-                resp = await client.post(
-                    GROK_ENDPOINT,
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": "grok-4-fast-reasoning",
-                        "messages": messages,
-                        "temperature": 0,
-                        "max_tokens": 50
-                    }
-                )
-                resp.raise_for_status()
-                break
-            except Exception as e:
-                if attempt == 2:
-                    raise
-    data = resp.json()
-
-    return {
-        "mode": "live",
-        "model": data.get("model"),
-        "response": data["choices"][0]["message"]["content"],
-        "usage": data.get("usage", {}),
-        "fingerprint": data.get("system_fingerprint")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
     }
+
+    loop = asyncio.get_event_loop()
+
+    def send():
+        return requests.post(URL, headers=headers, json=payload)
+
+    response = await loop.run_in_executor(None, send)
+
+    if response.status_code != 200:
+        print("\nGrok error:", response.text)
+
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
