@@ -3,6 +3,7 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
+AUDIT_LOG_FILE = "audits.worm"
 
 
 def _utc_now_iso() -> str:
@@ -102,3 +103,41 @@ def build_request_audit_event(
     if client_ip:
         event["client_ip"] = client_ip
     return event
+
+import json, hashlib, datetime
+
+def write_audit(intent, decision, user="demo"):
+    record = {
+        "intent": intent,
+        "decision": decision,
+        "user_id": user,
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+
+    record_hash = hashlib.sha256(
+        json.dumps(record, sort_keys=True).encode()
+    ).hexdigest()
+
+    with open(AUDIT_LOG_FILE, "a") as f:
+        f.write(f"{record_hash}:{json.dumps(record)}\n")
+
+    return record_hash
+
+import json, hashlib, datetime
+
+def write_audit(intent, decision, user="demo"):
+    record = {
+        "intent": intent,
+        "decision": decision,
+        "user_id": user,
+        "timestamp": datetime.datetime.utcnow().isoformat()
+    }
+
+    record_hash = hashlib.sha256(
+        json.dumps(record, sort_keys=True).encode()
+    ).hexdigest()
+
+    with open(AUDIT_LOG_FILE, "a") as f:
+        f.write(f"{record_hash}:{json.dumps(record)}\n")
+
+    return record_hash

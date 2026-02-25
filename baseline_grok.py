@@ -1,17 +1,35 @@
+import os
+import requests
 import asyncio
-from app.providers.grok_provider import call_grok
 
-async def analyze():
-    prompt = input("Enter prompt: ")
+API_KEY = os.getenv("GROK_API_KEY")
 
-    try:
-        result = await call_grok(prompt)
-    except Exception as e:
-        print("Error:", e)
-        return
+async def run(prompt, model="grok-4"):
 
-    print("\n=== BASELINE RESPONSE ===\n")
-    print(result)
+    loop = asyncio.get_event_loop()
 
-if __name__ == "__main__":
-    asyncio.run(analyze())
+    def request():
+        r = requests.post(
+            "https://api.x.ai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2
+            },
+            timeout=30
+        )
+        return r.json()["choices"][0]["message"]["content"]
+
+    text = await loop.run_in_executor(None, request)
+
+    return {
+        "model": model,
+        "response": text
+    }

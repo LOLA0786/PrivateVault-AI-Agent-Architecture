@@ -1,27 +1,48 @@
+import os
+import requests
 import asyncio
-from app.providers.grok_provider import call_grok
-from app.governance.data_protection import contains_sensitive_data
 
-async def main():
-    prompt = input("Enter prompt: ")
+API_KEY = os.getenv("GROK_API_KEY")
 
-    flagged_by_policy = False
-    drift_detected = False
+BLOCK_KEYWORDS = ["password", "credit card", "ssn", "pii"]
 
-    response = await call_grok(prompt)
+async def run(prompt, model="grok-4"):
 
-    # 🚨 DATA LEAK PREVENTION
-    if contains_sensitive_data(response):
-        flagged_by_policy = True
-        response = (
-            "⚠️ Sensitive personal data cannot be disclosed.\n"
-            "Please provide an anonymized or aggregated summary instead."
+    for word in BLOCK_KEYWORDS:
+        if word in prompt.lower():
+            return {
+                "model": model,
+                "response": "Response blocked due to policy violation.",
+                "blocked": True,
+                "policy_triggered": "SENSITIVE_DATA"
+            }
+
+    loop = asyncio.get_event_loop()
+
+    def request():
+        r = requests.post(
+            "https://api.x.ai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are a safe AI assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2
+            },
+            timeout=30
         )
+        return r.json()["choices"][0]["message"]["content"]
 
-    print("\n=== GOVERNED RESPONSE ===\n")
-    print(response)
-    print("\nPolicy Flagged:", flagged_by_policy)
-    print("Drift events:", drift_detected)
+    text = await loop.run_in_executor(None, request)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    return {
+        "model": model,
+        "response": text,
+        "blocked": False,
+        "policy_triggered": None
+    }
