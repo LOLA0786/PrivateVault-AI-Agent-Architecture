@@ -67,12 +67,81 @@ Instead of evaluating AI output after the fact, actions are evaluated before exe
 
 Example:
 
+<<<<<<< HEAD
 Agent Action → export_data
 Policy Engine → data_exfiltration_rule
 Result → blocked
 2. Execution Receipts
 
 Every decision produces a receipt containing:
+=======
+```bash
+git clone https://github.com/LOLA0786/PrivateVault-AI-Agent-Architecture.git
+cd PrivateVault-AI-Agent-Architecture
+2️⃣ Create environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+3️⃣ Connect Governance Brain (Mega Repo)
+export PYTHONPATH="$PYTHONPATH:/path/to/PrivateVault-Mega-Repo"
+⚙️ Required Environment Variables
+Audit Logging (Required)
+export PV_AUDIT_LOG_PATH="$HOME/privatevault_audit.log"
+Optional Governance Controls
+export DRIFT_POLICY=alert
+export COST_POLICY=alert
+export MAX_COST_PER_REQUEST=100000000
+export MAX_SESSION_COST=500000000
+🧪 Quick Tests
+Policy Enforcement
+python - <<EOF
+from app.governance.governance_adapter import enforce_enterprise_policy
+print(enforce_enterprise_policy("enterprise_demo","transfer_funds",{"amount":1000}))
+
+---
+
+# Security Model & Threat Assumptions
+
+PrivateVault assumes a threat model where autonomous AI agents may attempt actions that violate organizational policy, either intentionally (prompt injection / manipulation) or emergently through multi-agent coordination.
+
+The system focuses on enforcing governance at **execution time** rather than after-the-fact monitoring.
+
+Threat classes explored in this repository include:
+
+### Prompt Injection
+Agents may be manipulated by malicious instructions embedded in inputs or retrieved documents.
+
+### Tool Misuse
+Agents may attempt to call tools in ways that exceed defined permissions.
+
+### Data Exfiltration
+Agents may attempt to extract or export sensitive information.
+
+### Multi-Agent Coordination Attacks
+Individually safe actions across multiple agents may combine into a policy violation.
+
+Example:
+
+
+Agent A → read_customer_data
+Agent B → summarize_data
+Agent C → export_summary
+
+
+### High-Volume Execution Streams
+Large numbers of autonomous decisions may occur simultaneously.
+
+The repository includes stress tests simulating **tens of thousands of agent decisions** to evaluate runtime governance behavior.
+
+---
+
+# Evidence Integrity Model
+
+PrivateVault records every evaluated decision as an **execution receipt**.
+
+Each receipt contains:
+
+>>>>>>> 43270a5 (Add security model and threat assumptions section)
 
 agent
 action
@@ -80,6 +149,7 @@ policy_result
 timestamp
 hash
 
+<<<<<<< HEAD
 Example:
 
 {
@@ -214,3 +284,27 @@ integration with agent frameworks
 License
 
 MIT License
+=======
+
+Receipts are inserted into a **Merkle transparency log** to provide tamper-evident evidence.
+
+This allows independent verification that:
+
+- decisions occurred
+- the order of actions is preserved
+- the decision log has not been modified
+
+---
+
+# Limitations
+
+This repository is a **research prototype** and does not yet provide:
+
+- production-grade distributed storage
+- regulator-validated evidence formats
+- formal verification of policy correctness
+- integration with enterprise identity systems
+
+The goal of this project is to explore architectural approaches to **runtime governance for AI agents**.
+
+>>>>>>> 43270a5 (Add security model and threat assumptions section)
