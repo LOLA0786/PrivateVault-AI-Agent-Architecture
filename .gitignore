@@ -32,3 +32,7 @@ audit.log
 # datasets (optional)
 data/*.csv
 
+audits.worm
+ai_firewall_ledger.jsonl
+audits.worm
+ai_firewall_ledger.jsonl

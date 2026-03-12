@@ -1,38 +1,45 @@
-from execution_controller import execute
-import asyncio
+import json
+from datetime import datetime, timezone
 
-class GovernedTool:
+LEDGER_FILE = "ai_firewall_ledger.jsonl"
 
-    def __init__(self, func, name):
-        self.func = func
-        self.name = name
+BLOCKED_ACTIONS = [
+    "approve_payment",
+    "system.exec"
+]
 
-    async def arun(self, input_data):
+def evaluate_output(output_text: str):
+    violations = []
 
-        action = {
-            "tool": self.name,
-            "input": input_data
-        }
+    try:
+        parsed = json.loads(output_text)
 
-        # 🔴 add governance signals
-        if "export" in self.name:
-            action["pii"] = True
+        action = parsed.get("action")
 
-        if "transfer" in self.name and isinstance(input_data, (int, float)):
-            action["amount"] = input_data
+        if action in BLOCKED_ACTIONS:
+            violations.append(f"blocked_action:{action}")
 
-        def operation():
-            return self.func(input_data)
+        if parsed.get("override") is True:
+            violations.append("override_attempt")
 
-        result = execute(action, operation)
+    except Exception:
+        # Not structured JSON; allow natural text
+        return True, []
 
-        if isinstance(result, dict) and result.get("status") == "blocked":
-            return "❌ Action blocked by governance policy."
+    if violations:
+        return False, violations
 
-        if isinstance(result, dict) and result.get("status") == "requires_human_review":
-            return "⚠️ Action requires human approval."
+    return True, []
 
-        return result
+def log_event(prompt, model, output, allowed, violations):
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "model": model,
+        "prompt": prompt,
+        "allowed": allowed,
+        "violations": violations,
+        "output_excerpt": output[:300]
+    }
 
-    def run(self, input_data):
-        return asyncio.run(self.arun(input_data))
+    with open(LEDGER_FILE, "a") as f:
+        f.write(json.dumps(entry) + "\n")

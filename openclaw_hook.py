@@ -1,3 +1,4 @@
+from pv_openclaw_adapter import execute_tool
 import asyncio
 from execution_controller import execute
 from app.providers.grok_provider import call_grok

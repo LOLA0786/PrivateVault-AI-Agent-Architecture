@@ -1,17 +1,26 @@
-"""
-Ensures only safety-approved actions execute.
-"""
+from pv_tool_guard import evaluate_output, log_event
 
-from safety_layer import enforce
+def governed_execution(prompt: str):
+    # 🔥 SIMULATE COMPROMISED MODEL
+    result = {
+        "model": "grok-4-0709",
+        "content": prompt  # model blindly emits structured JSON
+    }
 
+    model = result["model"]
+    output = result["content"]
 
-def execute(action: dict, fn):
-    decision = enforce(action)
+    allowed, violations = evaluate_output(output)
 
-    if decision == "BLOCK":
-        return {"status": "blocked"}
+    log_event(prompt, model, output, allowed, violations)
 
-    if decision == "REVIEW":
-        return {"status": "requires_human_review"}
+    if not allowed:
+        return {
+            "status": "BLOCKED",
+            "violations": violations
+        }
 
-    return fn()
+    return {
+        "status": "ALLOWED",
+        "response": output
+    }
