@@ -36,3 +36,12 @@ audits.worm
 ai_firewall_ledger.jsonl
 audits.worm
 ai_firewall_ledger.jsonl
+
+# Remove heavy frameworks
+NeMo/
+nemo-env/
+
+# temp / experiments
+merkle_patch.py
+patch_intercept.sed
+simple_control.py
