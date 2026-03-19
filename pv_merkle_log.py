@@ -1,11 +1,23 @@
 import hashlib
 import json
 import time
+import os
 
-ledger = []
+LEDGER_FILE = "merkle_ledger.jsonl"
 
 def sha(data):
     return hashlib.sha256(data.encode()).hexdigest()
+
+def load_ledger():
+    if not os.path.exists(LEDGER_FILE):
+        return []
+
+    with open(LEDGER_FILE, "r") as f:
+        return [json.loads(line) for line in f]
+
+def save_record(record):
+    with open(LEDGER_FILE, "a") as f:
+        f.write(json.dumps(record) + "\n")
 
 def create_receipt(agent, action, result, model):
     record = {
@@ -20,12 +32,17 @@ def create_receipt(agent, action, result, model):
     record_hash = sha(encoded)
 
     record["hash"] = record_hash
-    ledger.append(record)
+
+    save_record(record)
 
     return record
 
+def get_hashes():
+    ledger = load_ledger()
+    return [r["hash"] for r in ledger]
+
 def merkle_root():
-    hashes = [r["hash"] for r in ledger]
+    hashes = get_hashes()
 
     if not hashes:
         return None
@@ -43,7 +60,7 @@ def merkle_root():
     return hashes[0]
 
 def generate_proof(index):
-    hashes = [r["hash"] for r in ledger]
+    hashes = get_hashes()
     proof = []
 
     while len(hashes) > 1:

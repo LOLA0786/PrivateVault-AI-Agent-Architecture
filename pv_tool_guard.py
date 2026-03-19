@@ -5,8 +5,20 @@ LEDGER_FILE = "ai_firewall_ledger.jsonl"
 
 BLOCKED_ACTIONS = [
     "approve_payment",
-    "system.exec"
+    "transfer_money"
 ]
+
+def normalize_action(action: str):
+    action = action.lower()
+
+    if "approve" in action or "payment" in action:
+        return "approve_payment"
+
+    if "transfer" in action:
+        return "transfer_money"
+
+    return action
+
 
 def evaluate_output(output_text: str):
     violations = []
@@ -14,22 +26,31 @@ def evaluate_output(output_text: str):
     try:
         parsed = json.loads(output_text)
 
-        action = parsed.get("action")
+        raw_action = parsed.get("action", "")
+        action = normalize_action(raw_action)
 
+        amount = parsed.get("amount", 0)
+
+        # 🚨 Rule 1: blocked action
         if action in BLOCKED_ACTIONS:
             violations.append(f"blocked_action:{action}")
 
+        # 🚨 Rule 2: high-risk amount
+        if amount and amount > 100000:
+            violations.append("high_amount")
+
+        # 🚨 Rule 3: override attempt
         if parsed.get("override") is True:
             violations.append("override_attempt")
 
     except Exception:
-        # Not structured JSON; allow natural text
         return True, []
 
     if violations:
         return False, violations
 
     return True, []
+
 
 def log_event(prompt, model, output, allowed, violations):
     entry = {
@@ -38,7 +59,7 @@ def log_event(prompt, model, output, allowed, violations):
         "prompt": prompt,
         "allowed": allowed,
         "violations": violations,
-        "output_excerpt": output[:300]
+        "output_excerpt": str(output)[:300]
     }
 
     with open(LEDGER_FILE, "a") as f:

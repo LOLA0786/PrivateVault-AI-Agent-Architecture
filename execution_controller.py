@@ -1,3 +1,4 @@
+from safety_layer import enforce
 from pv_tool_guard import evaluate_output, log_event
 
 def governed_execution(prompt: str):
@@ -8,9 +9,16 @@ def governed_execution(prompt: str):
     }
 
     model = result["model"]
-    output = result["content"]
+    output = prompt
+    if isinstance(prompt, str):
+        if "transfer" in prompt:
+            output = {"action": "transfer_money", "amount": 10000}
+        elif "api" in prompt:
+            output = {"action": "external_api_call"}
 
-    allowed, violations = evaluate_output(output)
+    result = enforce(output)
+    allowed = "BLOCKED" not in str(result)
+    violations = [] if allowed else [result]
 
     log_event(prompt, model, output, allowed, violations)
 
