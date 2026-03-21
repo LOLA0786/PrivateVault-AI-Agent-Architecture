@@ -45,3 +45,5 @@ nemo-env/
 merkle_patch.py
 patch_intercept.sed
 simple_control.py
+__pycache__/
+*.log
